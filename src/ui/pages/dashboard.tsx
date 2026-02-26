@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import '../index.css';
 import { ExtensionSnapshot } from '../../types';
 import { ExtensionCard } from '../components/ExtensionCard';
 import { calculateRisk } from '../../background/riskEngine';
@@ -13,7 +15,15 @@ export const Dashboard = () => {
     useEffect(() => {
         const loadData = async () => {
             chrome.storage.local.get('extensionsBaseline', (result) => {
-                const data = result.extensionsBaseline || {};
+                const data = result.extensionsBaseline;
+
+                if (!data) {
+                    // Ha a scanner még nem futott le, jelezzük a felhasználónak
+                    setExtensions([]);
+                    setLoading(false);
+                    return;
+                }
+
                 const extArray = Object.values(data) as ExtensionSnapshot[];
 
                 // Alapértelmezett rendezés kockázat szerint csökkenő
@@ -125,3 +135,9 @@ export const Dashboard = () => {
         </div>
     );
 };
+
+const rootElement = document.getElementById('root');
+if (rootElement) {
+    const root = createRoot(rootElement);
+    root.render(<Dashboard />);
+}

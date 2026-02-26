@@ -2,13 +2,14 @@ import { initializeScanner, detectChanges } from './scanner';
 
 console.log("Trust Monitor Background Service Worker elindítva.");
 
-// Bővítmény telepítésekor inicializáljuk a szkennert
+// Bővítmény telepítésekor alarm beállítása
 chrome.runtime.onInstalled.addListener(() => {
-    initializeScanner();
-
     // Napi többszöri (pl. 6 óránkénti) ellenőrzés alarm beállítása
     chrome.alarms.create('periodic-scan', { periodInMinutes: 6 * 60 });
 });
+
+// A szkenner minden induláskor lefut, de a scanner.ts onnan folytatja ahol abbahagyta
+initializeScanner();
 
 // Alarm kezelő a periodikus ellenőrzéshez
 chrome.alarms.onAlarm.addListener((alarm) => {
