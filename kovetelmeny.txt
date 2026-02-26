@@ -1,0 +1,150 @@
+ROLE: Senior Chrome Extension Engineer (Manifest V3) + Security-minded Product Architect.
+GOAL: Build a Chrome extension (MV3) named “Extension Trust Monitor” that helps users detect risky or compromised extensions by monitoring permission changes, update events, and high-risk capabilities. Provide clear, non-alarmist explanations and actionable remediation steps.
+
+NON-NEGOTIABLE REQUIREMENTS
+- Manifest V3 (service worker background).
+- Must comply with Chrome Web Store Developer Program Policies: transparent UX, no deceptive warnings, no unnecessary permissions, no remote code execution, no data selling, privacy-first. Provide a policy checklist doc.
+- Minimal permissions. Request powerful permissions only when needed and explain why.
+- All data stays local by default. No telemetry unless opt-in (MVP: no telemetry).
+- TypeScript + Vite build (or equivalent), eslint + prettier, unit tests.
+- Provide clean repo with CI (GitHub Actions) running lint + tests + build.
+- No Docker.
+
+CORE MVP FEATURES (SHIP THESE)
+1) Inventory & Baseline Snapshot
+   - Use chrome.management API to list installed extensions/apps (excluding the current extension unless needed).
+   - For each extension, store a baseline snapshot locally:
+     - id, name, version, enabled, installType, updateUrl (if available), permissions, hostPermissions.
+   - Persist snapshots in chrome.storage.local (not sync).
+
+2) Change Detection
+   - Detect and record the following events:
+     - Extension installed/uninstalled/enabled/disabled.
+     - Extension updated (version change).
+     - Permissions/host_permissions changed compared to baseline.
+   - Implement event listeners:
+     - chrome.management.onInstalled
+     - chrome.management.onUninstalled
+     - chrome.management.onEnabled / onDisabled
+     - periodic rescan (alarm every 6 hours) to catch changes missed by events.
+
+3) Risk Scoring (Rule-based, explainable)
+   - Build a risk engine that produces:
+     - score: 0–100
+     - reasons: array of explainable signals
+     - recommended_actions: array
+   - Signals (MVP):
+     A) Sensitive API permissions newly added (high weight):
+        - management, cookies, webRequest, declarativeNetRequest, debugger, downloads, history, nativeMessaging, proxy, privacy, tabCapture
+     B) Host permissions expanded (high weight):
+        - <all_urls> or patterns like *://*/*
+        - sensitive domains: mail.google.com, drive.google.com, docs.google.com, web.whatsapp.com, outlook.office.com (configurable list)
+     C) “Content injection risk” (medium):
+        - has “scripting” permission OR host permissions + content scripts declared (if detectable via manifest from management API where possible; otherwise infer from permissions/hosts only)
+     D) Obfuscation is NOT to be “detected” in MVP (too unreliable). Avoid claiming it.
+     E) Sudden update + new sensitive perms in same window (extra weight).
+   - IMPORTANT: Every score must show EXACTLY which permission or host pattern triggered it.
+
+4) User Experience
+   - Main dashboard (popup or full-page) with:
+     - list of installed extensions sorted by risk score
+     - search + filters (High/Med/Low)
+     - per-extension detail page:
+       - what changed (diff view: before/after permissions & hosts)
+       - why it matters (short explanations)
+       - buttons: “Open Chrome Extension Details” (chrome://extensions/?id=...), “Disable”, “Remove” (if allowed via API; otherwise deep-link + instructions)
+   - Notification flow:
+     - When a high-risk change is detected, show a Chrome notification:
+       “Extension X requested new permission Y” with a “Review” action.
+     - Do not use scary language or impersonate system warnings.
+
+5) Watch Mode (Optional but recommended MVP feature)
+   - Let user enable “Watch Mode” for specific sensitive sites (e.g., Gmail/Google Drive):
+     - inject a lightweight content script ONLY on those domains
+     - detect DOM injection patterns known for malicious extensions (MVP simple heuristics):
+       - full-screen iframe overlays
+       - iframes from non-matching domain
+       - unexpected new script tags referencing remote domains
+     - If detected, raise a “Potential overlay/injection detected on Gmail” alert with safe wording.
+   - IMPORTANT: Keep this feature OFF by default and require explicit user enablement + domain selection.
+   - Document limitations clearly.
+
+6) Local Audit Log
+   - Store an “Event Log” (max 500 entries) locally:
+     - timestamp, extension_id, event_type, diff_summary, risk_score, reasons
+   - Provide export as JSON (local download) to share with IT/security.
+
+7) Privacy & Policy Pack
+   - Provide PRIVACY.md:
+     - what data is collected locally
+     - what is NOT collected (no browsing history, no page content by default)
+     - no remote servers in MVP
+   - Provide SECURITY.md:
+     - threat model and known limitations
+   - Provide STORE_LISTING.md:
+     - Chrome Web Store listing text
+     - permission justifications
+     - screenshots checklist
+
+TECHNICAL CONSTRAINTS / NOTES
+- Use “permissions” and “host_permissions” manifest keys properly and request the minimum set.
+- Use chrome.alarms for periodic rescan.
+- Use chrome.storage.local with versioned schema and migration.
+- Avoid remote code, dynamic eval, or fetching executable logic from network.
+- Provide clear handling when chrome.management does not expose certain fields.
+
+REPO STRUCTURE
+/extension-trust-monitor
+  /src
+    /background (service worker)
+      index.ts
+      scanner.ts
+      riskEngine.ts
+      storage.ts
+      notifications.ts
+    /ui
+      popup.html + popup.ts + popup.css
+      options.html + options.ts + options.css
+      pages/
+        dashboard.ts
+        extensionDetail.ts
+    /content
+      watchMode.ts (only for user-selected domains)
+  /tests
+    riskEngine.test.ts (unit tests for scoring and diffs)
+  manifest.json
+  vite.config.ts (or equivalent)
+  eslint/prettier configs
+  PRIVACY.md
+  SECURITY.md
+  STORE_LISTING.md
+  .github/workflows/ci.yml
+
+ACCEPTANCE CRITERIA (MUST PASS)
+- Installs cleanly on Chrome stable.
+- Shows installed extension list with risk scores.
+- Detects updates and permission/host permission changes via rescan and records diffs.
+- Produces explainable reasons for every high score.
+- No unnecessary permissions beyond:
+  - "storage", "alarms", "notifications", and "management" (plus optional "scripting" ONLY if Watch Mode is implemented).
+- Watch Mode, if implemented, is OFF by default and only runs on explicit user-selected domains.
+- CI green: lint + tests + build.
+
+DELIVERABLES
+- Working MV3 extension build artifact.
+- README with:
+  - dev setup
+  - how to test permission change detection
+  - how to simulate a risky change
+- STORE_LISTING.md ready to paste into Chrome Web Store.
+
+NOW BUILD IT:
+Start with an architecture note (1–2 pages) describing MV3 components, data model, risk rules, and limitations. Then implement in small atomic commits with clear messages.
+
+Extra (nagyon fontos) megjegyzés – hogy ne bukjon el a CWS review-n
+
+A management permission erős, ezért a listingben kristálytisztán indokold (“a telepített bővítmények változásainak figyeléséhez kell”). A permissionök deklarálását és a CWS policy elvárásait dokumentáld a repo-ban.
+
+Ne állíts olyat, hogy “garantáltan kiszúr minden malware-t”. Írd bele a limitationöket (heurisztika, MV3 korlátok).
+
+Watch Mode-nál csak célzott domainekre injektálj, és legyen kikapcsolható. (A túl széles host permission tipikusan review rizikó.)
