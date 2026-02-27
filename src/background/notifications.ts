@@ -1,4 +1,4 @@
-export function showHighRiskNotification(extensionName: string, reason: string, extensionId: string) {
+export function showHighRiskNotification(extensionName: string, reason: string, _extensionId: string) {
     chrome.notifications.create({
         type: 'basic',
         iconUrl: '../icons/icon48.png', // Fallback ha nincs icon, működni fog

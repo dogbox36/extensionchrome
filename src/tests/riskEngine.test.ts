@@ -8,7 +8,7 @@ describe('Risk Engine', () => {
         name: 'Test Extension',
         version: '1.0.0',
         enabled: true,
-        installType: 'normal',
+        installType: 'normal' as any,
         permissions: [],
         hostPermissions: []
     };

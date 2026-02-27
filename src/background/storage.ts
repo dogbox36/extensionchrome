@@ -1,4 +1,4 @@
-import { AppStorage, ExtensionSnapshot, AuditLogEntry } from '../types';
+import { AppStorage, ExtensionSnapshot, AuditLogEntry, AppConfig } from '../types';
 
 export const storage = {
     async get<K extends keyof AppStorage>(key: K): Promise<AppStorage[K] | null> {
@@ -39,5 +39,14 @@ export const storage = {
         }
 
         await this.set('auditLog', currentLog);
+    },
+
+    async getConfig(): Promise<AppConfig> {
+        const data = await this.get('config');
+        return data || { whitelistedExtensionIds: [], riskSensitivity: 'normal' };
+    },
+
+    async saveConfig(config: AppConfig): Promise<void> {
+        await this.set('config', config);
     }
 };

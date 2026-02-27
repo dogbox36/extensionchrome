@@ -7,6 +7,8 @@ export interface ExtensionSnapshot {
     updateUrl?: string;
     permissions: string[];
     hostPermissions: string[];
+    previousPermissions?: string[];
+    previousHostPermissions?: string[];
 }
 
 export interface RiskScoreResult {
@@ -28,8 +30,14 @@ export interface AuditLogEntry {
     reasons?: string[];
 }
 
+export interface AppConfig {
+    whitelistedExtensionIds: string[];
+    riskSensitivity: 'low' | 'normal' | 'high';
+}
+
 export interface AppStorage {
     extensionsBaseline: Record<string, ExtensionSnapshot>;
     auditLog: AuditLogEntry[];
     watchModeDomains: string[];
+    config: AppConfig;
 }

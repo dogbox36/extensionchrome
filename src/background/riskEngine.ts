@@ -1,4 +1,4 @@
-import { ExtensionSnapshot, RiskScoreResult } from '../types';
+import { ExtensionSnapshot, RiskScoreResult, AppConfig } from '../types';
 
 const SENSITIVE_PERMISSIONS = new Set([
     'management', 'cookies', 'webRequest', 'declarativeNetRequest',
@@ -13,11 +13,21 @@ const SENSITIVE_DOMAINS = [
 
 export function calculateRisk(
     snapshot: ExtensionSnapshot,
-    previousSnapshot?: ExtensionSnapshot
+    previousSnapshot?: ExtensionSnapshot,
+    config?: AppConfig
 ): RiskScoreResult {
     let score = 0;
     const reasons: string[] = [];
     const recommendedActions: string[] = [];
+
+    // Fehérlista ellenőrzése
+    if (config?.whitelistedExtensionIds.includes(snapshot.id)) {
+        return {
+            score: 0,
+            reasons: ['A bővítmény a felhasználó által megbízhatóként (fehérlistás) van megjelölve.'],
+            recommendedActions: []
+        };
+    }
 
     // 1. Szenzitív API engedélyek (Nagy súly)
     const newSensitivePerms = snapshot.permissions.filter(p => SENSITIVE_PERMISSIONS.has(p));
@@ -66,6 +76,15 @@ export function calculateRisk(
         if (newlyAddedPerms.length > 0 || newlyAddedHosts.length > 0) {
             score += 20;
             reasons.push('A legutóbbi frissítés során hirtelen új, szenzitív jogosultságokat kért.');
+        }
+    }
+
+    // Érzékenység alapján súlyozás
+    if (config) {
+        if (config.riskSensitivity === 'low') {
+            score = Math.floor(score * 0.7);
+        } else if (config.riskSensitivity === 'high') {
+            score = Math.floor(score * 1.3);
         }
     }
 

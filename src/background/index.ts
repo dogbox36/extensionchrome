@@ -48,7 +48,7 @@ chrome.management.onDisabled.addListener((info) => {
 });
 
 // Értesítésre kattintás kezelése
-chrome.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
+chrome.notifications.onButtonClicked.addListener((_notificationId, buttonIndex) => {
     // A buttonIndex 0 az 'Áttekintés' gomb lesz
     if (buttonIndex === 0) {
         chrome.tabs.create({ url: chrome.runtime.getURL('src/ui/pages/dashboard.html') });

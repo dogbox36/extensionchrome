@@ -17,7 +17,7 @@ export async function captureCurrentState(): Promise<Record<string, ExtensionSna
                     name: ext.name,
                     version: ext.version,
                     enabled: ext.enabled,
-                    installType: ext.installType,
+                    installType: ext.installType as any,
                     updateUrl: ext.updateUrl || '',
                     permissions: ext.permissions || [],
                     hostPermissions: ext.hostPermissions || []
@@ -28,14 +28,15 @@ export async function captureCurrentState(): Promise<Record<string, ExtensionSna
     });
 }
 
-export async function detectChanges(eventType: EventType, targetExtensionId?: string) {
+export async function detectChanges(eventType: EventType, _targetExtensionId?: string) {
     const currentState = await captureCurrentState();
     const baseline = await storage.getBaseline();
+    const config = await storage.getConfig();
     let baselineModified = false;
 
     const compareSnapshot = async (extId: string, current: ExtensionSnapshot, prev?: ExtensionSnapshot) => {
         // Kiszámítjuk a kockázatot
-        const risk = calculateRisk(current, prev);
+        const risk = calculateRisk(current, prev, config);
 
         // Ha nagyon magas a kockázat és új vagy változott, szólunk
         if (risk.score >= 70 && eventType !== 'disabled' && eventType !== 'uninstalled') {
@@ -62,6 +63,12 @@ export async function detectChanges(eventType: EventType, targetExtensionId?: st
                     diffSummary: diffs.join(', ')
                 });
             }
+        }
+
+        // Előző engedélyek mentése a diff nézethez
+        if (prev) {
+            current.previousPermissions = prev.permissions;
+            current.previousHostPermissions = prev.hostPermissions;
         }
 
         // Frissítjük a baseline-t

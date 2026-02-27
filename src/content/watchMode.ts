@@ -59,13 +59,57 @@ function checkSuspiciousScripts() {
     }
 }
 
+function checkCryptoMining() {
+    if (suspended) return;
+    const miningVars = ['CoinHive', 'CryptoNoter', 'JSECoin', 'CH'];
+    for (const v of miningVars) {
+        if ((window as any)[v]) {
+            console.error(`Trust Monitor: Kriptobányász (Cryptomining) script detektálva: ${v}`);
+            alert(`⚠️ Trust Monitor Figyelmeztetés:\n\nKriptobányász tevékenység észlelve (${v}) a háttérben!`);
+            suspended = true;
+            break;
+        }
+    }
+}
+
+function initKeyloggerHeuristics() {
+    let lastKeypressTime = 0;
+    let rapidKeyCount = 0;
+
+    document.addEventListener('keydown', (e) => {
+        if (suspended) return;
+        if (!e.isTrusted) {
+            rapidKeyCount += 10;
+        } else {
+            const now = Date.now();
+            if (now - lastKeypressTime < 20) {
+                rapidKeyCount++;
+            } else {
+                rapidKeyCount = 1;
+            }
+            lastKeypressTime = now;
+        }
+
+        if (rapidKeyCount > 50) {
+            alert("⚠️ Trust Monitor Figyelmeztetés:\n\nGyanús szintetikus billentyűzet-aktivitás (Keylogger/Form manipuláció)!");
+            suspended = true;
+            rapidKeyCount = 0;
+        }
+    }, { capture: true, passive: true });
+}
+
+initKeyloggerHeuristics();
+
+
 // Futás kis késleltetéssel és időszakosan
 setTimeout(() => {
     checkOverlays();
     checkSuspiciousScripts();
+    checkCryptoMining();
 }, 2000);
 
 setInterval(() => {
     checkOverlays();
     checkSuspiciousScripts();
+    checkCryptoMining();
 }, 5000);
